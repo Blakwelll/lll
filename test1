@@ -1,0 +1,40 @@
+graph TD
+    %% 样式定义
+    classDef orange fill:#FFF5EE,stroke:#FF8C00,stroke-width:2px;
+    classDef purple fill:#F8F8FF,stroke:#9370DB,stroke-width:1px;
+    classDef blue fill:#F0F8FF,stroke:#1E90FF,stroke-width:1px;
+    classDef green fill:#F5FFFA,stroke:#3CB371,stroke-width:1px;
+
+    %% 顶部组件
+    SCHEDULER["SCHEDULER<br>daily 2am"]:::orange
+    VisionModel["Vision Model"]:::purple
+    SmallLLM["Small LLM"]:::purple
+    AIEngine["AI ENGINE<br>LLM API"]:::purple
+
+    %% 主流程组件
+    SOURCE["SOURCE<br>JIRA Server"]:::green
+    Download["Download"]:::blue
+    Process["Process"]:::blue
+    Analyze["Analyze"]:::blue
+    Digest["Digest"]:::blue
+    Upload["Upload"]:::blue
+    PAEDatabase[("PAE Database")]:::green
+    SummaryWeb["Summary Web<br>team dashboard"]:::green
+
+    %% 连线关系
+    SOURCE <--> |"JIRA sync"| Download
+    SCHEDULER --> Download
+    Download --> Process
+    
+    VisionModel -.-> |"image caption"| Process
+    SmallLLM -.-> |"text cleanup"| Process
+    
+    Process --> Analyze
+    AIEngine -.-> |"content / JSON"| Analyze
+    
+    Analyze --> Digest
+    AIEngine -.-> |"1-sentence"| Digest
+    
+    Digest --> Upload
+    Upload --> PAEDatabase
+    PAEDatabase --> SummaryWeb
