@@ -1,40 +1,34 @@
-graph TD
-    %% 样式定义
-    classDef orange fill:#FFF5EE,stroke:#FF8C00,stroke-width:2px;
-    classDef purple fill:#F8F8FF,stroke:#9370DB,stroke-width:1px;
-    classDef blue fill:#F0F8FF,stroke:#1E90FF,stroke-width:1px;
-    classDef green fill:#F5FFFA,stroke:#3CB371,stroke-width:1px;
+```mermaid
+flowchart TD
+subgraph IN["Ingestion"]
+A1[Jira API] --> A2[Case Parser]
+A2 --> A3["LLM Extract\nSymptom / Root Cause / Fix"]
+end
 
-    %% 顶部组件
-    SCHEDULER["SCHEDULER<br>daily 2am"]:::orange
-    VisionModel["Vision Model"]:::purple
-    SmallLLM["Small LLM"]:::purple
-    AIEngine["AI ENGINE<br>LLM API"]:::purple
+subgraph STORE["Knowledge Store"]
+A3 -->|embed| B1[("Vector DB\nChroma / Pinecone")]
+A3 -->|structure| B2[("Graph DB\nNeo4j")]
+B1 & B2 --> B3["Knowledge Index"]
+end
 
-    %% 主流程组件
-    SOURCE["SOURCE<br>JIRA Server"]:::green
-    Download["Download"]:::blue
-    Process["Process"]:::blue
-    Analyze["Analyze"]:::blue
-    Digest["Digest"]:::blue
-    Upload["Upload"]:::blue
-    PAEDatabase[("PAE Database")]:::green
-    SummaryWeb["Summary Web<br>team dashboard"]:::green
+subgraph SYNC["Live Sync"]
+C1[Jira Webhook] --> C2[Human Review]
+C2 -->|approved| A3
+end
 
-    %% 连线关系
-    SOURCE <--> |"JIRA sync"| Download
-    SCHEDULER --> Download
-    Download --> Process
-    
-    VisionModel -.-> |"image caption"| Process
-    SmallLLM -.-> |"text cleanup"| Process
-    
-    Process --> Analyze
-    AIEngine -.-> |"content / JSON"| Analyze
-    
-    Analyze --> Digest
-    AIEngine -.-> |"1-sentence"| Digest
-    
-    Digest --> Upload
-    Upload --> PAEDatabase
-    PAEDatabase --> SummaryWeb
+subgraph USE["Query Layer"]
+B3 --> D1["RAG Search"]
+B3 --> D2["Auto Suggest\non new case"]
+D1 & D2 --> D3["LLM Answer\n+ cited cases"]
+end
+
+classDef store fill:#854F0B,stroke:#BA7517,color:#fff
+classDef engine fill:#1A233A,stroke:#1F5C99,color:#fff
+classDef io fill:#0F6E56,stroke:#1D9E75,color:#fff
+classDef sync fill:#3C3489,stroke:#7F77DD,color:#fff
+
+class B1,B2,B3 store
+class A2,A3,D3 engine
+class A1,D1,D2 io
+class C1,C2 sync
+```
