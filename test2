@@ -9,3 +9,93 @@ NVMe 2.0 TXT
 4. 用户问题 embedding，NumPy 计算相似度
     ↓
 5. 取 Top-K chunk，拼进 Prompt 调 LLM
+
+
+
+
+import re
+
+
+def is_section_heading(line: str) -> bool:
+    """
+    根据 NVMe 文本中的章节编号识别标题。
+
+    可匹配：
+    1 Introduction
+    3.1 Scope
+    5.2.1 Controller Registers
+    7.10.2.3 Some Title
+    """
+    pattern = r"^\s*\d+(?:\.\d+)*\s+\S.+$"
+    return bool(re.match(pattern, line))
+
+
+def split_text_with_section(
+    text: str,
+    chunk_size: int = 4000,
+    overlap: int = 400
+):
+    chunks = []
+
+    current_section = "Unknown Section"
+    buffer = ""
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+
+        if not line:
+            continue
+
+        # 遇到新的章节标题
+        if is_section_heading(line):
+            current_section = line
+
+        # 把原始行加入正文
+        buffer += raw_line + "\n"
+
+        # 达到 chunk 大小后切块
+        while len(buffer) >= chunk_size:
+            chunk_text = buffer[:chunk_size].strip()
+
+            chunks.append({
+                "id": len(chunks),
+                "section": current_section,
+                "text": chunk_text
+            })
+
+            # 保留 overlap
+            buffer = buffer[chunk_size - overlap:]
+
+    # 保存最后不足 chunk_size 的部分
+    if buffer.strip():
+        chunks.append({
+            "id": len(chunks),
+            "section": current_section,
+            "text": buffer.strip()
+        })
+
+    return chunks
+
+
+
+
+with open("nvme_spec.txt", "r", encoding="utf-8") as f:
+    text = f.read()
+
+chunks = split_text_with_section(text)
+
+print(chunks[0])
+
+
+
+
+vectors = []
+
+for chunk in chunks:
+    embedding_input = (
+        f"Section: {chunk['section']}\n\n"
+        f"{chunk['text']}"
+    )
+
+    vector = embedding_model(embedding_input)
+    vectors.append(vector)
