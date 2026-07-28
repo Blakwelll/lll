@@ -15,19 +15,32 @@ NVMe 2.0 TXT
 
 import re
 
-
-def is_section_heading(line: str) -> bool:
+def is_section_heading(line: str, next_line: str) -> bool:
     """
-    根据 NVMe 文本中的章节编号识别标题。
+    匹配以下格式：
 
-    可匹配：
-    1 Introduction
-    3.1 Scope
-    5.2.1 Controller Registers
-    7.10.2.3 Some Title
+    3.1
+    Scope
+
+    5.2.1
+    Controller Registers
+
+    7.10.2.3
+    Some Title
     """
-    pattern = r"^\s*\d+(?:\.\d+)*\s+\S.+$"
-    return bool(re.match(pattern, line))
+
+    # 至少包含一个点，例如 3.1
+    # 后面可以继续有任意多个 .数字
+    number_pattern = r"^\s*\d+\.\d+(?:\.\d+)*\s*$"
+
+    # 下一行必须以英文字母开头
+    title_pattern = r"^\s*[A-Za-z][^\r\n]*$"
+
+    return bool(
+        re.match(number_pattern, line)
+        and re.match(title_pattern, next_line)
+    )
+
 
 
 def split_text_with_section(
