@@ -1,0 +1,11 @@
+NVMe 2.0 TXT
+    ↓
+1. 文本切块
+    ↓
+2. 每个 chunk 调 embedding model
+    ↓
+3. vectors + chunks 保存到本地
+    ↓
+4. 用户问题 embedding，NumPy 计算相似度
+    ↓
+5. 取 Top-K chunk，拼进 Prompt 调 LLM
