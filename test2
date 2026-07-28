@@ -14,26 +14,8 @@ NVMe 2.0 TXT
 
 
 import re
-
 def is_section_heading(line: str, next_line: str) -> bool:
-    """
-    匹配以下格式：
-
-    3.1
-    Scope
-
-    5.2.1
-    Controller Registers
-
-    7.10.2.3
-    Some Title
-    """
-
-    # 至少包含一个点，例如 3.1
-    # 后面可以继续有任意多个 .数字
     number_pattern = r"^\s*\d+\.\d+(?:\.\d+)*\s*$"
-
-    # 下一行必须以英文字母开头
     title_pattern = r"^\s*[A-Za-z][^\r\n]*$"
 
     return bool(
@@ -42,44 +24,42 @@ def is_section_heading(line: str, next_line: str) -> bool:
     )
 
 
-
-def split_text_with_section(
+def split_text_with_sections(
     text: str,
     chunk_size: int = 4000,
     overlap: int = 400
 ):
     chunks = []
+    lines = text.splitlines()
 
     current_section = "Unknown Section"
     buffer = ""
+    i = 0
 
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
+    while i < len(lines):
+        line = lines[i].strip()
+        next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
 
-        if not line:
-            continue
+        if is_section_heading(line, next_line):
+            current_section = f"{line} {next_line}"
+            buffer += line + "\n" + next_line + "\n"
+            i += 2
+        else:
+            buffer += lines[i] + "\n"
+            i += 1
 
-        # 遇到新的章节标题
-        if is_section_heading(line):
-            current_section = line
-
-        # 把原始行加入正文
-        buffer += raw_line + "\n"
-
-        # 达到 chunk 大小后切块
         while len(buffer) >= chunk_size:
             chunk_text = buffer[:chunk_size].strip()
 
-            chunks.append({
-                "id": len(chunks),
-                "section": current_section,
-                "text": chunk_text
-            })
+            if chunk_text:
+                chunks.append({
+                    "id": len(chunks),
+                    "section": current_section,
+                    "text": chunk_text
+                })
 
-            # 保留 overlap
             buffer = buffer[chunk_size - overlap:]
 
-    # 保存最后不足 chunk_size 的部分
     if buffer.strip():
         chunks.append({
             "id": len(chunks),
