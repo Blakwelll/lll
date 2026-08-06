@@ -1,34 +1,53 @@
-```mermaid
-flowchart TD
-subgraph IN["Ingestion"]
-A1[Jira API] --> A2[Case Parser]
-A2 --> A3["LLM Extract\nSymptom / Root Cause / Fix"]
-end
+import time
+import quarchpy
 
-subgraph STORE["Knowledge Store"]
-A3 -->|embed| B1[("Vector DB\nChroma / Pinecone")]
-A3 -->|structure| B2[("Graph DB\nNeo4j")]
-B1 & B2 --> B3["Knowledge Index"]
-end
 
-subgraph SYNC["Live Sync"]
-C1[Jira Webhook] --> C2[Human Review]
-C2 -->|approved| A3
-end
+# 修改成你的模块连接地址。
+# 示例形式可能是：
+# "USB:QTLxxxx-xx-xxx"
+# "TCP:192.168.1.100"
+# "SERIAL:COM5"
+MODULE_ADDRESS = "USB:你的模块地址"
 
-subgraph USE["Query Layer"]
-B3 --> D1["RAG Search"]
-B3 --> D2["Auto Suggest\non new case"]
-D1 & D2 --> D3["LLM Answer\n+ cited cases"]
-end
 
-classDef store fill:#854F0B,stroke:#BA7517,color:#fff
-classDef engine fill:#1A233A,stroke:#1F5C99,color:#fff
-classDef io fill:#0F6E56,stroke:#1D9E75,color:#fff
-classDef sync fill:#3C3489,stroke:#7F77DD,color:#fff
+def send(module, command: str) -> str:
+    """发送命令并打印模块响应。"""
+    print(f"> {command}")
+    response = module.sendCommand(command)
+    print(f"< {response}")
+    return response
 
-class B1,B2,B3 store
-class A2,A3,D3 engine
-class A1,D1,D2 io
-class C1,C2 sync
-```
+
+module = quarchpy.quarchDevice(MODULE_ADDRESS)
+
+try:
+    # 查看模块身份，确认连接正常
+    send(module, "*IDN?")
+
+    # 恢复默认配置
+    send(module, "config:default state")
+
+    # 配置 source 4：
+    # 总长度 10 ms
+    # 周期 500 us
+    # 占空比 50%
+    send(module, "source:4:bounce:length 10 ms")
+    send(module, "source:4:bounce:period 500 us")
+    send(module, "source:4:bounce:duty 50")
+
+    # 将 PERST# 分配到 source 4
+    send(module, "signal:perst:source 4")
+
+    # 执行一次下电/上电，让配置好的 sequence 运行
+    send(module, "run:power down")
+    time.sleep(1)
+    send(module, "run:power up")
+
+    print("PERST# sequence 已执行")
+
+finally:
+    # 测试结束后恢复默认配置
+    try:
+        send(module, "config:default state")
+    finally:
+        module.closeConnection()
