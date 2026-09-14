@@ -1,0 +1,46 @@
+; ========================================
+; Continuously read register
+; Restart reading after CRC is detected
+; ========================================
+
+REG_CMD = 'memr 0xfc000180'
+
+; 0 means no timeout
+timeout = 0
+mtimeout = 0
+
+; Optional: save UART output
+gettime LOG_TIME '%Y%m%d_%H%M%S'
+sprintf2 LOG_FILE 'uart_memr_%s.log' LOG_TIME
+logopen LOG_FILE 0 0 0 1 1
+
+:RESTART_READ
+
+; Make sure the command prompt is available
+wait '[SYS] >'
+
+:READ_LOOP
+
+; Read register
+sendln REG_CMD
+
+; result = 1: prompt received
+; result = 2: CRC detected
+wait '[SYS] >' 'CRC'
+
+if result = 1 then
+    ; Prompt returned: immediately read again
+    goto READ_LOOP
+elseif result = 2 then
+    ; CRC detected: stop current read loop
+    beep
+    goto WAIT_AFTER_CRC
+endif
+
+:WAIT_AFTER_CRC
+
+; Wait until the system returns to the prompt
+wait '[SYS] >'
+
+; Restart continuous register reading
+goto READ_LOOP
