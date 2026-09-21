@@ -1,1 +1,10 @@
 & "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" --version
+
+
+
+New-NetFirewallRule `
+  -DisplayName "Allow ICMPv4 Ping" `
+  -Direction Inbound `
+  -Protocol ICMPv4 `
+  -IcmpType 8 `
+  -Action Allow
